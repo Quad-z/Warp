@@ -1,6 +1,7 @@
 #!/bin/bash
 
 clear
+
 mkdir -p ~/.cloudshell && touch ~/.cloudshell/no-apt-get-warning # Google Cloud Shell fix
 
 echo "🔧 Установка зависимостей..."
@@ -16,6 +17,8 @@ downloader="https://knowerlife.github.io/downloader.html?filename="
 
 ins() { curl -s -H 'user-agent:' -H 'content-type: application/json' -X "$1" "${api}/$2" "${@:3}"; }
 sec() { ins "$1" "$2" -H "authorization: Bearer $3" "${@:4}"; }
+
+clear
 
 for i in $(seq 1 $count); do
   priv=$(wg genkey)
@@ -53,12 +56,6 @@ Endpoint = 188.114.97.66:3138
 EOM
 )
 
-  echo -e "\n📄 Конфиг #$i:"
-  echo "------------------------------------------"
-  echo "$conf"
-  echo "------------------------------------------"
-
   encoded=$(echo -n "$conf" | base64 -w 0)
-  echo "📥 Скачать конфиг файлом:"
-  echo "${downloader}WARP_${i}.conf&content=${encoded}"
+  echo "📥 Конфиг #$i: ${downloader}WARP_$i.conf&content=${encoded}"
 done
