@@ -52,11 +52,24 @@ zip -r warp_confs.zip warp_confs > /dev/null
 
 echo -e "\n✅ Конфиги сохранены в архив: warp_confs.zip"
 
+# Найдём свободный порт от 8000 до 8100
+for port in {8000..8100}; do
+  if ! lsof -i :$port >/dev/null; then
+    free_port=$port
+    break
+  fi
+done
+
+if [ -z "$free_port" ]; then
+  echo "❌ Не удалось найти свободный порт для веб-сервера."
+  exit 1
+fi
+
 # Запуск локального веб-сервера
 echo -e "\n🌐 Локальная ссылка для скачивания архива:"
 ip=$(hostname -I | awk '{print $1}')
-echo "👉 http://${ip}:8000/warp_confs.zip"
+echo "👉 http://${ip}:${free_port}/warp_confs.zip"
 
-# Запуск сервера (только если не запущен уже)
 echo -e "\nНажмите Ctrl+C чтобы остановить сервер."
-python3 -m http.server 8000
+
+python3 -m http.server "$free_port"
