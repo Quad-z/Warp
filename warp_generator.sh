@@ -1,78 +1,62 @@
 #!/bin/bash
 
-set -e
+clear
+echo -n "Сколько конфигов сгенерировать? (по умолчанию 1): "
+read count
+count=${count:-1}
 
-for pkg in curl jq wg zip; do
-    if ! command -v $pkg &>/dev/null; then
-        echo "⏳ Устанавливаем $pkg..."
-        sudo apt-get update -y
-        sudo apt-get install -y $pkg
-    fi
-done
+mkdir -p warp_confs
+for i in $(seq 1 $count); do
+  priv=$(wg genkey)
+  pub=$(echo "$priv" | wg pubkey)
 
-API="https://api.cloudflareclient.com/v0i1909051800"
+  response=$(curl -s -X POST "https://api.cloudflareclient.com/v0a769/reg" \
+    -H 'Content-Type: application/json' \
+    -d "{\"key\":\"$pub\",\"install_id\":\"\",\"fcm_token\":\"\",\"tos\":\"$(date -u +%FT%T.000Z)\",\"type\":\"ios\",\"locale\":\"en_US\"}")
 
-ins() {
-    curl -s -H 'user-agent:' -H 'content-type: application/json' -X "$1" "$API/$2" "${@:3}"
-}
-sec() {
-    ins "$1" "$2" -H "authorization: Bearer $3" "${@:4}"
-}
+  id=$(echo "$response" | jq -r '.result.id')
+  token=$(echo "$response" | jq -r '.result.token')
 
-read -p "Сколько WARP-конфигов сгенерировать? (по умолчанию 25): " COUNT
-COUNT=${COUNT:-25}
-echo "▶️ Генерируем $COUNT конфигов..."
+  patch=$(curl -s -X PATCH "https://api.cloudflareclient.com/v0a769/reg/$id" \
+    -H "Authorization: Bearer $token" -H 'Content-Type: application/json' \
+    -d '{"warp_enabled":true}')
 
-TMPDIR=$(mktemp -d)
-trap 'rm -rf "$TMPDIR"' EXIT
+  peer_pub=$(echo "$patch" | jq -r '.result.config.peers[0].public_key')
+  client_ipv4=$(echo "$patch" | jq -r '.result.config.interface.addresses.v4')
+  client_ipv6=$(echo "$patch" | jq -r '.result.config.interface.addresses.v6')
 
-success_count=0
-for i in $(seq 1 $COUNT); do
-    echo -ne "  Прогресс: $i/$COUNT [Успешно: $success_count]\r"
-    priv=$(wg genkey)
-    pub=$(echo "$priv" | wg pubkey)
-    resp=$(ins POST "reg" -d "{\"install_id\":\"\",\"tos\":\"$(date -u +%FT%T.000Z)\",\"key\":\"$pub\",\"fcm_token\":\"\",\"type\":\"ios\",\"locale\":\"en_US\"}")
-    if ! echo "$resp" | jq -e '.result.id' >/dev/null 2>&1; then
-        echo "❌ Ошибка регистрации $i, пропуск..."
-        continue
-    fi
-    id=$(echo "$resp" | jq -r '.result.id')
-    token=$(echo "$resp" | jq -r '.result.token')
-    resp=$(sec PATCH "reg/$id" "$token" -d '{"warp_enabled":true}')
-    peer_pub=$(echo "$resp" | jq -r '.result.config.peers[0].public_key')
-    client_ipv4=$(echo "$resp" | jq -r '.result.config.interface.addresses.v4')
-    client_ipv6=$(echo "$resp" | jq -r '.result.config.interface.addresses.v6')
-    cat > "$TMPDIR/warp_$i.conf" <<EOF
+  cat <<EOF > "warp_confs/WARP_$i.conf"
 [Interface]
 PrivateKey = $priv
+S1 = 0
+S2 = 0
+Jc = 120
+Jmin = 23
+Jmax = 911
+H1 = 1
+H2 = 2
+H3 = 3
+H4 = 4
+MTU = 1280
 Address = $client_ipv4, $client_ipv6
-DNS = 1.1.1.1, 2606:4700:4700::1111
+DNS = 1.1.1.1, 2606:4700:4700::1111, 1.0.0.1, 2606:4700:4700::1001
 
 [Peer]
 PublicKey = $peer_pub
 AllowedIPs = 0.0.0.0/0, ::/0
 Endpoint = 188.114.97.66:3138
 EOF
-    ((success_count++))
 done
 
-echo -e "\n✅ Успешно сгенерировано $success_count/$COUNT конфигов"
+zip -r warp_confs.zip warp_confs > /dev/null
 
-ZIPNAME="WARP_$(date +%Y%m%d_%H%M%S)_${success_count}configs.zip"
-cd "$TMPDIR"
-zip -q "$ZIPNAME" *.conf
-cd - >/dev/null
+echo -e "\n✅ Конфиги сохранены в архив: warp_confs.zip"
 
-echo "⏫ Загружаем архив на file.io..."
-RESPONSE=$(curl -s -F "file=@$TMPDIR/$ZIPNAME" https://file.io/?expires=14d)
-UPLOAD_URL=$(echo "$RESPONSE" | jq -r '.link')
+# Запуск локального веб-сервера
+echo -e "\n🌐 Локальная ссылка для скачивания архива:"
+ip=$(hostname -I | awk '{print $1}')
+echo "👉 http://${ip}:8000/warp_confs.zip"
 
-if [[ "$UPLOAD_URL" == https://* ]]; then
-    echo -e "\n✅ Всё готово! Ссылка на скачивание архива:"
-    echo "$UPLOAD_URL"
-    echo "⚠️ Файл будет храниться 14 дней. Скачайте заранее."
-else
-    echo "❌ Не удалось загрузить архив. Ответ сервера:"
-    echo "$RESPONSE"
-    exit 1
-fi
+# Запуск сервера (только если не запущен уже)
+echo -e "\nНажмите Ctrl+C чтобы остановить сервер."
+python3 -m http.server 8000
