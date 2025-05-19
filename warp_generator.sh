@@ -13,16 +13,19 @@ echo -n "Сколько конфигов сгенерировать? (по ум�
 read count
 count=${count:-1}
 
-# Основной API Cloudflare WARP
+# API Cloudflare WARP
 api="https://api.cloudflareclient.com/v0i1909051800"
-downloader="https://knowerlife.github.io/downloader.html?filename="
 
+# Ваша ссылка на downloader.html (замени на свою!)
+downloader="https://quad-z.github.io/Warp/downloader.html?filename="
+
+# Функции для запросов
 ins() { curl -s -H 'user-agent:' -H 'content-type: application/json' -X "$1" "${api}/$2" "${@:3}"; }
 sec() { ins "$1" "$2" -H "authorization: Bearer $3" "${@:4}"; }
 
 clear
 
-for i in $(seq 1 $count); do
+for i in $(seq 1 "$count"); do
   priv=$(wg genkey)
   pub=$(echo "$priv" | wg pubkey)
 
@@ -35,11 +38,11 @@ for i in $(seq 1 $count); do
   response=$(sec PATCH "reg/${id}" "$token" -d '{"warp_enabled":true}')
   peer_pub=$(echo "$response" | jq -r '.result.config.peers[0].public_key')
 
-  # Генерация IP в пределах подсети
+  # Генерация IP
   ip_suffix=$((100 + i))
   client_ip="10.10.8.${ip_suffix}"
 
-  # Генерация конфига в нужном формате
+  # Конфигурация
   conf=$(cat <<-EOM
 [Interface]
 Address = ${client_ip}/24
@@ -53,7 +56,8 @@ PersistentKeepalive = 25
 EOM
 )
 
-  # Base64 и ссылка на скачивание
+  # Base64 и ссылка
   encoded=$(echo -n "$conf" | base64 -w 0)
-  echo "📥 Конфиг #$i: ${downloader}WARP_$i.conf&content=${encoded}"
+  echo -e "\n📥 Ссылка для скачивания конфигурации #$i:"
+  echo "${downloader}WARP_${i}.conf&content=${encoded}"
 done
