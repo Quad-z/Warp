@@ -2,24 +2,37 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>WARP Config Downloader</title>
+  <title>WARP Downloader</title>
 </head>
 <body>
 <script>
-  const params = new URLSearchParams(location.search);
-  const filename = params.get("filename") || "WARP.conf";
+  const params = new URLSearchParams(window.location.search);
+  const filename = params.get("filename") || "WARP.zip";
   const content = params.get("content");
 
-  if (content) {
-    const blob = new Blob([Uint8Array.from(atob(content), c => c.charCodeAt(0))]);
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = filename;
-    link.click();
-    document.body.innerHTML = `<h2>📥 Загрузка началась: ${filename}</h2>`;
-  } else {
-    document.body.innerHTML = "<h2>❌ Контент не найден</h2>";
+  if (!content) {
+    document.body.innerHTML = "<h2>❌ Ошибка: параметр 'content' не передан.</h2>";
+    throw new Error("content not found");
   }
+
+  // Преобразование base64 -> байты
+  function base64ToUint8Array(base64) {
+    const binary = atob(base64);
+    const len = binary.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes;
+  }
+
+  const blob = new Blob([base64ToUint8Array(content)], { type: "application/zip" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  link.click();
+
+  document.body.innerHTML = `<h2>📦 Загрузка архива началась: <code>${filename}</code></h2>`;
 </script>
 </body>
 </html>
