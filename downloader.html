@@ -1,38 +1,22 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <title>WARP Downloader</title>
+  <meta charset="utf-8">
+  <title>WARP Config Downloader</title>
 </head>
 <body>
-<script>
-  const params = new URLSearchParams(window.location.search);
-  const filename = params.get("filename") || "WARP.zip";
-  const content = params.get("content");
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const filename = params.get("filename") || "warp.conf";
+    const content = atob(params.get("content") || "");
 
-  if (!content) {
-    document.body.innerHTML = "<h2>❌ Ошибка: параметр 'content' не передан.</h2>";
-    throw new Error("content not found");
-  }
+    const blob = new Blob([content], {type: "text/plain"});
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.click();
 
-  // Преобразование base64 -> байты
-  function base64ToUint8Array(base64) {
-    const binary = atob(base64);
-    const len = binary.length;
-    const bytes = new Uint8Array(len);
-    for (let i = 0; i < len; i++) {
-      bytes[i] = binary.charCodeAt(i);
-    }
-    return bytes;
-  }
-
-  const blob = new Blob([base64ToUint8Array(content)], { type: "application/zip" });
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = filename;
-  link.click();
-
-  document.body.innerHTML = `<h2>📦 Загрузка архива началась: <code>${filename}</code></h2>`;
-</script>
+    document.body.innerHTML = `<h2>Файл <code>${filename}</code> загружается...</h2>`;
+  </script>
 </body>
 </html>
