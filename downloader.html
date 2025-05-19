@@ -1,22 +1,25 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="utf-8">
+  <meta charset="UTF-8">
   <title>WARP Config Downloader</title>
 </head>
 <body>
-  <script>
-    const params = new URLSearchParams(window.location.search);
-    const filename = params.get("filename") || "warp.conf";
-    const content = atob(params.get("content") || "");
+<script>
+  const params = new URLSearchParams(location.search);
+  const filename = params.get("filename") || "WARP.conf";
+  const content = params.get("content");
 
-    const blob = new Blob([content], {type: "text/plain"});
+  if (content) {
+    const blob = new Blob([Uint8Array.from(atob(content), c => c.charCodeAt(0))]);
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
     link.download = filename;
     link.click();
-
-    document.body.innerHTML = `<h2>Файл <code>${filename}</code> загружается...</h2>`;
-  </script>
+    document.body.innerHTML = `<h2>📥 Загрузка началась: ${filename}</h2>`;
+  } else {
+    document.body.innerHTML = "<h2>❌ Контент не найден</h2>";
+  }
+</script>
 </body>
 </html>
