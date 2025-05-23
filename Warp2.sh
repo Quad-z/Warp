@@ -1,75 +1,28 @@
 #!/bin/bash
 
-clear
-mkdir -p ~/.cloudshell && touch ~/.cloudshell/no-apt-get-warning # Для Google Cloud Shell
-echo "Установка зависимостей..."
-apt update -y && apt install sudo -y
-sudo apt-get update -y --fix-missing
-sudo apt-get install wireguard-tools jq wget curl -y --fix-missing
+# --- Начало конфигурации ---
+EXPECTED_PASSWORD_HASH="7604716ae87b3e154cddaaacebb6f7cf786f90fead122ba9f40dc41232ebc1b9"
+ENCODED_SCRIPT_CONTENT="IyEvYmluL2Jhc2gKCmNsZWFyCm1rZGlyIC1wIH4vLmNsb3Vkc2hlbGwgJiYgdG91Y2ggfi8uY2xvdWRzaGVsbC9uby1hcHQtZ2V0LXdhcm5pbmcgIyDQlNC70Y8gR29vZ2xlIENsb3VkIFNoZWxsCmVjaG8gItCj0YHRgtCw0L3QvtCy0LrQsCDQt9Cw0LLQuNGB0LjQvNC+0YHRgtC10LkuLi4iCmFwdCB1cGRhdGUgLXkgJiYgYXB0IGluc3RhbGwgc3VkbyAteQpzdWRvIGFwdC1nZXQgdXBkYXRlIC15IC0tZml4LW1pc3NpbmcKc3VkbyBhcHQtZ2V0IGluc3RhbGwgd2lyZWd1YXJkLXRvb2xzIGpxIHdnZXQgY3VybCAteSAtLWZpeC1taXNzaW5nCgojINCh0L/RgNC+0YHQuNGC0Ywg0YMg0L/QvtC70YzQt9C+0LLQsNGC0LXQu9GPINC60L7Qu9C40YfQtdGB0YLQstC+INC60L7QvdGE0LjQs9C+0LIKcmVhZCAtcCAi0KHQutC+0LvRjNC60L4g0LrQvtC90YTQuNCz0L7QsiDRgdCz0LXQvdC10YDQuNGA0L7QstCw0YLRjD8gKNC/0L4g0YPQvNC+0LvRh9Cw0L3QuNGOIDEpOiAiIGNvdW50CmNvdW50PSR7Y291bnQ6LTF9CgojINCh0YHRi9C70LrQsCDQvdCwINGC0LLQvtC5IGRvd25sb2FkZXIKZG93bmxvYWRlcj0iaHR0cHM6Ly9xdWFkLXouZ2l0aHViLmlvL1dhcnAvZG93bmxvYWRlci5odG1sP2ZpbGVuYW1lPSIKCiMgQVBJIENsb3VkZmxhcmUgV0FSUAphcGk9Imh0dHBzOi8vYXBpLmNsb3VkZmxhcmVjbGllbnQuY29tL3YwaTE5MDkwNTE4MDAiCmlucygpIHsgY3VybCAtcyAtSCAndXNlci1hZ2VudDonIC1IICdjb250ZW50LXR5cGU6IGFwcGxpY2F0aW9uL2pzb24nIC1YICIkMSIgIiR7YXBpfS8kMiIgIiR7QDozfSI7IH0Kc2VjKCkgeyBpbnMgIiQxIiAiJDIiIC1IICJhdXRob3JpemF0aW9uOiBCZWFyZXIgJDMiICIke0A6NH0iOyB9Cgpmb3IgaSBpbiAkKHNlcSAxICIkY291bnQiKTsgZG8KICBwcml2PSQod2cgZ2Vua2V5KQogIHB1Yj0kKGVjaG8gIiRwcml2IiB8IHdnIHB1YmtleSkKCiAgcGF5bG9hZD0kKGNhdCA8PEVPRgp7CiAgImluc3RhbGxfaWQiOiAiIiwKICAidG9zIjogIiQoZGF0ZSAtdSArJUZUJVQuMDAwWikiLAogICJrZXkiOiAiJHtwdWJ9IiwKICAiZmNtX3Rva2VuIjogIiIsCiAgInR5cGUiOiAiaW9zIiwKICAibG9jYWxlIjogImVuX1VTIgp9CkVPRgopCgogIHJlc3BvbnNlPSQoaW5zIFBPU1QgInJlZyIgLWQgIiRwYXlsb2FkIikKICBpZD0kKGVjaG8gIiRyZXNwb25zZSIgfCBqcSAtciAnLnJlc3VsdC5pZCcpCiAgdG9rZW49JChlY2hvICIkcmVzcG9uc2UiIHwganEgLXIgJy5yZXN1bHQudG9rZW4nKQogIHJlc3BvbnNlPSQoc2VjIFBBVENIICJyZWcvJHtpZH0iICIkdG9rZW4iIC1kICd7IndhcnBfZW5hYmxlZCI6dHJ1ZX0nKQoKICBwZWVyX3B1Yj0kKGVjaG8gIiRyZXNwb25zZSIgfCBqcSAtciAnLnJlc3VsdC5jb25maWcucGVlcnNbMF0ucHVibGljX2tleScpCiAgY2xpZW50X2lwdjQ9JChlY2hvICIkcmVzcG9uc2UiIHwganEgLXIgJy5yZXN1bHQuY29uZmlnLmludGVyZmFjZS5hZGRyZXNzZXMudjQnKQogIGNsaWVudF9pcHY2PSQoZWNobyAiJHJlc3BvbnNlIiB8IGpxIC1yICcucmVzdWx0LmNvbmZpZy5pbnRlcmZhY2UuYWRkcmVzc2VzLnY2JykKCiAgY29uZj0kKGNhdCA8PEVPTQpbSW50ZXJmYWNlXQpQcml2YXRlS2V5ID0gJHtwcml2fQpTMSA9IDAKUzIgPSAwCkpjID0gMTIwCkptaW4gPSAyMwpKbWF4ID0gOTExCkgxID0gMQpIMiA9IDIKSDMgPSAzCkg0ID0gNApNVFUgPSAxMjgwCkFkZHJlc3MgPSAke2NsaWVudF9pcHY0fSwgJHtjbGllbnRfaXB2Nn0KRE5TID0gMS4xLjEuMSwgMjYwNjo0NzAwOjQ3MDA6OjExMTEsIDEuMC4wLjEsIDI2MDY6NDcwMDo0NzAwOjoxMDAxCgpbUGVlcl0KUHVibGljS2V5ID0gJHtwZWVyX3B1Yn0KQWxsb3dlZElQcyA9IDAuMC4wLjAvMCwgOjovMApFbmRwb2ludCA9IDE4OC4xMTQuOTcuNjY6MzEzOApFT00KKQoKICBjb25mX2Jhc2U2ND0kKGVjaG8gLW4gIiR7Y29uZn0iIHwgYmFzZTY0IC13IDApCiAgZWNobyAtZSAiXG7wn5OlINCa0L7QvdGE0LjQsyAjJGk6IgogIGVjaG8gIiR7ZG93bmxvYWRlcn1XQVJQXyR7aX0uY29uZiZjb250ZW50PSR7Y29uZl9iYXNlNjR9Igpkb25lCgplY2hvIC1lICJcbuKchSDQktGB0LUg0YHRgdGL0LvQutC4INCz0L7RgtC+0LLRiy4iCg=="
+# --- Конец конфигурации ---
 
-# Спросить у пользователя количество конфигов
-read -p "Сколько конфигов сгенерировать? (по умолчанию 1): " count
-count=${count:-1}
-
-# Ссылка на твой downloader
-downloader="https://quad-z.github.io/Warp/downloader.html?filename="
-
-# API Cloudflare WARP
-api="https://api.cloudflareclient.com/v0i1909051800"
-ins() { curl -s -H 'user-agent:' -H 'content-type: application/json' -X "$1" "${api}/$2" "${@:3}"; }
-sec() { ins "$1" "$2" -H "authorization: Bearer $3" "${@:4}"; }
-
-for i in $(seq 1 "$count"); do
-  priv=$(wg genkey)
-  pub=$(echo "$priv" | wg pubkey)
-
-  payload=$(cat <<EOF
-{
-  "install_id": "",
-  "tos": "$(date -u +%FT%T.000Z)",
-  "key": "${pub}",
-  "fcm_token": "",
-  "type": "ios",
-  "locale": "en_US"
+check_password() {
+    local entered_password
+    read -s -p "🔐 Введите пароль для запуска: " entered_password
+    echo
+    local entered_hash
+    entered_hash=$(echo -n "$entered_password" | sha256sum | awk '{print $1}')
+    if [ "$entered_hash" == "$EXPECTED_PASSWORD_HASH" ]; then
+        return 0
+    else
+        echo "❌ Неверный пароль!"
+        return 1
+    fi
 }
-EOF
-)
 
-  response=$(ins POST "reg" -d "$payload")
-  id=$(echo "$response" | jq -r '.result.id')
-  token=$(echo "$response" | jq -r '.result.token')
-  response=$(sec PATCH "reg/${id}" "$token" -d '{"warp_enabled":true}')
-
-  peer_pub=$(echo "$response" | jq -r '.result.config.peers[0].public_key')
-  client_ipv4=$(echo "$response" | jq -r '.result.config.interface.addresses.v4')
-  client_ipv6=$(echo "$response" | jq -r '.result.config.interface.addresses.v6')
-
-  conf=$(cat <<EOM
-[Interface]
-PrivateKey = ${priv}
-S1 = 0
-S2 = 0
-Jc = 120
-Jmin = 23
-Jmax = 911
-H1 = 1
-H2 = 2
-H3 = 3
-H4 = 4
-MTU = 1280
-Address = ${client_ipv4}, ${client_ipv6}
-DNS = 1.1.1.1, 2606:4700:4700::1111, 1.0.0.1, 2606:4700:4700::1001
-
-[Peer]
-PublicKey = ${peer_pub}
-AllowedIPs = 0.0.0.0/0, ::/0
-Endpoint = 188.114.97.66:3138
-EOM
-)
-
-  conf_base64=$(echo -n "${conf}" | base64 -w 0)
-  echo -e "\n📥 Конфиг #$i:"
-  echo "${downloader}WARP_${i}.conf&content=${conf_base64}"
-done
-
-echo -e "\n✅ Все ссылки готовы."
+if check_password; then
+    echo "🔑 Пароль верный. Запускаю основной скрипт..."
+    echo "$ENCODED_SCRIPT_CONTENT" | base64 -d | bash
+else
+    exit 1
+fi
+exit 0
